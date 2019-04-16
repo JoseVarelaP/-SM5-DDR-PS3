@@ -91,7 +91,7 @@ for player in ivalues(PlayerNumber) do
     PInfo[#PInfo+1] = Def.Sprite{
         Texture=THEME:GetPathG("","DiffList"),
         OnCommand=function(self)
-            self:xy(-80,-110):zoom(0.2):pause()
+            self:xy(-80,-112):zoom(0.2):pause()
             self:setstate( SetFrameDifficulty(player) )
         end;
     };
@@ -143,7 +143,7 @@ for player in ivalues(PlayerNumber) do
     PInfo[#PInfo+1] = Def.ActorProxy{
         BeginCommand=function(self)
             self:SetTarget( SCREENMAN:GetTopScreen():GetChild("Score"..ToEnumShortString(player)) )
-            :xy(60, -92)
+            :xy(60, -96)
         end;
     };
 
