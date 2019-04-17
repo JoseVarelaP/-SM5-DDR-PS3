@@ -8,15 +8,23 @@ t[#t+1] = Def.ActorFrame{
 			self:zoomx(0.3):zoomy(0.26)
 		end;
 	},
+
+	Def.Sprite{
+		Texture="../Wheel/BPMDisplay label",
+		OnCommand=function(self)
+			self:zoom(0.15):xy(-120,-16)
+		end;
+	},
+
 	Def.BitmapText{
 		Font="bold handel gothic/25px",
 		OnCommand=function(self)
-			self:zoom(0.65):halign(0):xy(-155,-1)
+			self:zoom(0.65):halign(0):xy(-160,-1)
 		end;
 		SetMessageCommand=function(self,params)
 			local song = params.Song;
 			if song then
-				self:settext( song:GetDisplayMainTitle() ):maxwidth(500)
+				self:settext( song:GetDisplayFullTitle() ):maxwidth(500)
 			end;
 		end;
 	};
@@ -35,7 +43,7 @@ t[#t+1] = Def.ActorFrame{
 	Def.BitmapText{
 		Font="bold handel gothic/25px",
 		OnCommand=function(self)
-			self:zoom(0.6):halign(0):xy(-125,-16)
+			self:zoom(0.6):halign(0):xy(-100,-16)
 		end;
 		SetMessageCommand=function(self,params)
 			local song = params.Song;

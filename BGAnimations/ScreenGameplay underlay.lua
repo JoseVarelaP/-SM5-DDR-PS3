@@ -213,7 +213,7 @@ SInfo[#SInfo+1] = Def.Sprite{
 SInfo[#SInfo+1] = Def.BitmapText{
     Font="Common Normal",
     OnCommand=function(self)
-        self:halign(0):settext( GAMESTATE:GetCurrentSong():GetDisplayMainTitle() )
+        self:halign(0):settext( GAMESTATE:GetCurrentSong():GetDisplayFullTitle() )
         :xy( 35, -6 ):zoom(0.7):maxwidth( IsUsingWideScreen() and SCREEN_WIDTH/2.8 or 160 )
     end;
 };
