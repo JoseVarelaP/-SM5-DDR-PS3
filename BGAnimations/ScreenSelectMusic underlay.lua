@@ -20,6 +20,11 @@ t[#t+1] = LoadActor( THEME:GetPathG("","SelectMusic/BorderBall") )..{
     OnCommand=function(self)
         self:xy(SCREEN_CENTER_X-180, SCREEN_CENTER_Y-30):zoom(0.145):spin():effectmagnitude(0,0,50)
     end;
+    CurrentSongChangedMessageCommand=function(self)
+        self:finishtweening():diffusealpha(0):sleep(0.2):linear(0.1):diffusealpha(1)
+    end;
 }
+
+collectgarbage();
 
 return t;

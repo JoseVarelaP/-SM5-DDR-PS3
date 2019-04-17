@@ -15,6 +15,7 @@ local function SetFrameDifficulty( pn )
 		return 0
 	end
 end
+
 local function iris_mod_internal(str, pn)
     local ps= GAMESTATE:GetPlayerState(pn)
     local pmods= ps:GetPlayerOptionsString('ModsLevel_Song')
@@ -111,7 +112,7 @@ for player in ivalues(PlayerNumber) do
     PInfo[#PInfo+1] = Def.ActorProxy{
         BeginCommand=function(self)
             self:SetTarget( SCREENMAN:GetTopScreen():GetChild("Life"..ToEnumShortString(player)) )
-            :xy(46, -105)
+            :xy(46, -106)
         end;
     };
 
@@ -191,5 +192,40 @@ for player in ivalues(PlayerNumber) do
     end
     t[#t+1] = Judg
 end
+
+local SInfo = Def.ActorFrame{
+    Condition=not (GAMESTATE:IsPlayerEnabled(PLAYER_1) and GAMESTATE:IsPlayerEnabled(PLAYER_2)),
+    OnCommand=function(self)
+        self:xy( SCREEN_RIGHT, SCREEN_BOTTOM-40 ):diffusealpha(0)
+    end;
+    EnterGameplayMessageCommand=function(self)
+        self:decelerate(2):diffusealpha(0.5):x( SCREEN_CENTER_X+64*2.5 )
+    end;
+};
+
+SInfo[#SInfo+1] = Def.Sprite{
+    Texture=THEME:GetPathG("Gameplay","SongInfo"),
+    OnCommand=function(self)
+        self:halign(0)
+    end;
+};
+
+SInfo[#SInfo+1] = Def.BitmapText{
+    Font="Common Normal",
+    OnCommand=function(self)
+        self:halign(0):settext( GAMESTATE:GetCurrentSong():GetDisplayMainTitle() )
+        :xy( 35, -6 ):zoom(0.7):maxwidth( IsUsingWideScreen() and SCREEN_WIDTH/2.8 or 160 )
+    end;
+};
+
+SInfo[#SInfo+1] = Def.BitmapText{
+    Font="Common Normal",
+    OnCommand=function(self)
+        self:halign(0):settext( GAMESTATE:GetCurrentSong():GetDisplayArtist() )
+        :xy( 35, 6 ):zoom(0.7):maxwidth( IsUsingWideScreen() and SCREEN_WIDTH/2.8 or 160 )
+    end;
+};
+
+t[#t+1] = SInfo
 
 return t;
