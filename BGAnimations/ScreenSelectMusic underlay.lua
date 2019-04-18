@@ -30,19 +30,36 @@ t[#t+1] = LoadActor( THEME:GetPathG("","SelectMusic/Group") )..{
         self:xy(SCREEN_CENTER_X-300, SCREEN_CENTER_Y+150):zoom(0.115)
         :thump():effectclock("bgm"):effectmagnitude(1,1.1,0):effectoffset(0.2)
     end;
-    CurrentSongChangedMessageCommand=function(self)
-    end;
 };
 
 t[#t+1] = Def.BitmapText{
     Font="bold handel gothic/25px",
     Text=string.upper("Group"),
     OnCommand=function(self)
-        self:xy(SCREEN_CENTER_X-300, SCREEN_CENTER_Y+150):zoom(0.8)
+        self:xy(SCREEN_CENTER_X-300, SCREEN_CENTER_Y+150):zoom(0.6)
+        :wrapwidthpixels(300)
     end;
     SortOrderChangedMessageCommand=function(self)
-        self:settext( SortOrderToLocalizedString( GAMESTATE:GetSortOrder() ) )
+        self:settext( string.upper( SortOrderToLocalizedString( GAMESTATE:GetSortOrder() ) ) )
     end;
+};
+
+t[#t+1] = Def.StepsDisplayList{
+	Name="StepsDisplayList";
+	OnCommand=function(self)
+		self:zoom(1):xy( SCREEN_CENTER_X-200,SCREEN_CENTER_Y-10 ):diffusealpha(1)
+	end;
+	StartSelectingStepsMessageCommand=function(self)
+		self:stoptweening():sleep(0.5):diffusealpha(1)
+	end;
+	SongUnchosenMessageCommand=function(self)
+		self:stoptweening():diffusealpha(0)
+	end;
+
+	CursorP1=Def.ActorFrame{};
+	CursorP1Frame=Def.ActorFrame{};
+	CursorP2=Def.ActorFrame{};
+	CursorP2Frame=Def.ActorFrame{};
 };
 
 t[#t+1] = Def.Banner{
@@ -51,7 +68,11 @@ t[#t+1] = Def.Banner{
     end;
     CurrentSongChangedMessageCommand=function(self)
         if GAMESTATE:GetCurrentSong() then
-            self:Load( GAMESTATE:GetCurrentSong():GetBackgroundPath() )
+            if (Sprite.LoadFromCached ~= nil) then
+    			self:LoadFromCached("Background", GAMESTATE:GetCurrentSong():GetBackgroundPath())
+			else
+    			self:Load(GAMESTATE:GetCurrentSong():GetBackgroundPath())
+			end
         end
     end;
 };

@@ -1,5 +1,6 @@
 local t = Def.ActorFrame{};
 
+local Wrapper;
 
 t[#t+1] = Def.ActorFrame{
 	Def.Sprite{
@@ -15,6 +16,55 @@ t[#t+1] = Def.ActorFrame{
 			self:zoom(0.15):xy(-120,-16)
 		end;
 	},
+
+	Def.ActorFrame{
+		SetMessageCommand=function(self,params)
+			local song = params.Song;
+			self:visible( (song and PROFILEMAN:IsSongNew(song)) and true or false )
+		end;
+
+		Def.Sprite{
+			Texture="../Wheel/New/eff07",
+			OnCommand=function(self)
+				self:zoom(0.6):xy(70,-18)
+			end;
+		},
+	
+		Def.Sprite{
+			Texture="../Wheel/New/mc_star02",
+			OnCommand=function(self)
+				self:zoom(0.6):xy(55,-16)
+			end;
+		},
+	
+		Def.Sprite{
+			Texture="../Wheel/New/selNew",
+			OnCommand=function(self)
+				self:zoom(0.6):xy(80,-20)
+			end;
+		},
+
+		Def.ActorFrame{
+			OnCommand=function(self)
+				self:thump(4):xy(80,-20)
+				:effectmagnitude(1.3,1,0)
+			end;
+			Def.ActorFrame{
+				OnCommand=function(self)
+					self:glowshift():effectperiod(4)
+					:effectcolor1( color("1,1,1,0") ):effectcolor2( color("1,1,1,0.5") )
+				end;
+				Def.Sprite{
+					Texture="../Wheel/New/selNew",
+					OnCommand=function(self)
+						self:zoom(0.6):diffusealpha(1):blend(Blend.Add)
+						:diffuseshift():effectperiod(4)
+						:effectcolor1( color("1,1,1,0") ):effectcolor2( color("1,1,1,1") )
+					end;
+				},
+			}
+		}
+	};
 
 	Def.BitmapText{
 		Font="bold handel gothic/25px",

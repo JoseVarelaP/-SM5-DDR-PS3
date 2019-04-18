@@ -42,8 +42,7 @@ for player in ivalues(PlayerNumber) do
                 self:xy( PPos[player][1]+40, PPos[player][2]-10 ):linear(0.2)
                 self:xy( unpack(PPos[player]) )
             else
-                self:xy( PPos["Default"][1]+3, PPos["Default"][2]-50 ):linear(0.2)
-                self:xy( PPos["Default"][1]+40, PPos["Default"][2]-10 ):linear(0.2)
+                self:xy( PPos["Default"][1]-40, PPos["Default"][2]-50 ):linear(0.2)
                 self:xy( unpack(PPos["Default"]) )
             end
         end;
@@ -57,7 +56,7 @@ for player in ivalues(PlayerNumber) do
     };
 
     PFrame[#PFrame+1] = Def.Sprite{
-        Texture=THEME:GetPathG("","DiffList"),
+        Texture=THEME:GetPathG("","SideDiffList"),
         OnCommand=function(self)
             self:xy(-130,-4):zoom(0.2):pause():halign(0)
             self:setstate( SetFrameDifficulty(PLAYER_1) )
@@ -99,7 +98,12 @@ for player in ivalues(PlayerNumber) do
                 self:zoom(0.7)
                 :xy( 100 + (6*i),30+(20*i))
                 :halign(1):diffusealpha(0)
-                :sleep(2 + (0.5*i)):diffusealpha(1):linear(0.1)
+                :sleep(2 + (0.8*i)):queuecommand("ShowScore")
+            end;
+            ShowScoreCommand=function(self)
+                SOUND:PlayOnce( THEME:GetPathS("","switch") )
+                self:addy(-20):addx(-10)
+                :linear(0.2):addy(20):addx(10):diffusealpha(1)
             end;
         };
     end
@@ -109,10 +113,36 @@ end
 
 t[#t+1] = Def.BitmapText{
     Font="bold handel gothic/25px",
-    Text=GAMESTATE:GetCurrentSong():GetDisplayMainTitle(),
+    Text=GAMESTATE:GetCurrentSong():GetDisplayFullTitle(),
     OnCommand=function(self)
         self:xy( SCREEN_CENTER_X+(130-320), SCREEN_CENTER_Y+(108-240) ):halign(0):zoom(0.8)
         :hibernate(0.5)
+    end;
+};
+
+
+function PlaySample()
+	if GAMESTATE:IsCourseMode() then return end
+	local song = GAMESTATE:GetCurrentSong()
+
+	if song then
+        local songpath = song:GetMusicPath()
+        local totallength = song:MusicLengthSeconds()
+		local sample_start = song:GetSampleStart()
+        local sample_len = song:GetSampleLength()
+
+        if songpath and sample_start and sample_len then
+            SOUND:PlayMusicPart(songpath, sample_start,totallength-sample_start, 0, 0, false, true, true)
+        end
+    end
+end
+
+t[#t+1] = Def.Actor{
+    BeginCommand=function(self)
+        self:queuecommand("plauaido")
+    end;
+    plauaidoCommand=function(self)
+        PlaySample()
     end;
 };
 

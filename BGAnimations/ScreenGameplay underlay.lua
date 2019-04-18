@@ -16,6 +16,8 @@ local function SetFrameDifficulty( pn )
 	end
 end
 
+local InDoubleMode = GAMESTATE:GetCurrentStyle():GetName() == "double"
+
 local function iris_mod_internal(str, pn)
     local ps= GAMESTATE:GetPlayerState(pn)
     local pmods= ps:GetPlayerOptionsString('ModsLevel_Song')
@@ -41,6 +43,9 @@ for player in ivalues(PlayerNumber) do
                 modst = modst .. ", ".. "*999".. " dark"..i
             end
             iris_mod_internal(modst, player)
+            if GAMESTATE:GetCurrentStyle():GetName() == "solo" then
+                SCREENMAN:GetTopScreen():GetChild("Player"..ToEnumShortString(player)):zoom(1.25):addy(34)
+            end
         end;
         EnterGameplayMessageCommand=function(self)
             self:decelerate(1.5):zoom(1):diffusealpha(1)
@@ -53,21 +58,47 @@ for player in ivalues(PlayerNumber) do
         Texture=THEME:GetPathG("","GameArea"),
         OnCommand=function(self)
             -- Fit within SM's 64x64 note setting.
-            self:xy(2,96):zoomx(0.95)
+            self:xy(0,180):zoom(1.3):zoomx(-1.35)
+            if InDoubleMode then
+                self:x(-64*2)
+            end
+            if GAMESTATE:GetCurrentStyle():GetName() == "solo" then
+                self:Load( THEME:GetPathG("","mc_lane") )
+                :zoom(0.6):zoomx(0.595):addx(2):addy(-20)
+            end
         end;
         EnterGameplayMessageCommand=function(self)
             self:sleep(0.4):decelerate(0.4):diffusealpha(0.7)
         end;
     };
 
+    if InDoubleMode then
+        Judg[#Judg+1] = Def.Sprite{
+            Texture=THEME:GetPathG("","GameArea"),
+            OnCommand=function(self)
+                -- Fit within SM's 64x64 note setting.
+                self:xy(0,180):zoom(1.3):zoomx(1.35)
+                if InDoubleMode then
+                    self:x(64*2)
+                end
+            end;
+            EnterGameplayMessageCommand=function(self)
+                self:sleep(0.4):decelerate(0.4):diffusealpha(0.7)
+            end;
+        };
+    end
+
     Judg[#Judg+1] = Def.Sprite{
         Texture=THEME:GetPathG("","PNumberBoard"),
         OnCommand=function(self)
-            self:xy(0,150):zoom(1):pause():diffusealpha(0.3)
+            self:xy(22,150):zoom(1):pause():diffusealpha(0.3)
             self:setstate( string.sub( ToEnumShortString(player), 2 ) -1 )
+            if InDoubleMode then
+                self:x(22+(64*2))
+            end
         end;
         EnterGameplayMessageCommand=function(self)
-            self:decelerate(2):y(100)
+            self:decelerate(1.6):y(204)
         end;
     };
 
@@ -86,10 +117,14 @@ for player in ivalues(PlayerNumber) do
             self:xy(0,-100):zoom(0.2)
         end;
         -- I'm so sorry, but I cannot find another way of doing this without breaking sm.
-        StartReceptor1MessageCommand=function(self) iris_mod_internal("*2 0 dark1", player) self:finishtweening():sleep(1/3):queuemessage("StartReceptor2") end;
-        StartReceptor2MessageCommand=function(self) iris_mod_internal("*2 0 dark2", player) self:finishtweening():sleep(1/3):queuemessage("StartReceptor3") end;
-        StartReceptor3MessageCommand=function(self) iris_mod_internal("*2 0 dark3", player) self:finishtweening():sleep(1/3):queuemessage("StartReceptor4") end;
-        StartReceptor4MessageCommand=function(self) iris_mod_internal("*2 0 dark4", player) end;
+        StartReceptor1MessageCommand=function(self) iris_mod_internal("*2 0 dark1", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor2") end;
+        StartReceptor2Command=function(self) iris_mod_internal("*2 0 dark2", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor3") end;
+        StartReceptor3Command=function(self) iris_mod_internal("*2 0 dark3", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor4") end;
+        StartReceptor4Command=function(self) iris_mod_internal("*2 0 dark4", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor5") end;
+        StartReceptor5Command=function(self) iris_mod_internal("*2 0 dark5", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor6") end;
+        StartReceptor6Command=function(self) iris_mod_internal("*2 0 dark6", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor7") end;
+        StartReceptor7Command=function(self) iris_mod_internal("*2 0 dark7", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor8") end;
+        StartReceptor8Command=function(self) iris_mod_internal("*2 0 dark8", player) end;
     };
 
     PInfo[#PInfo+1] = Def.Sprite{
@@ -153,10 +188,22 @@ for player in ivalues(PlayerNumber) do
 
     Judg[#Judg+1] = PInfo
 
+    local stpos = function(self)
+        local sp = {
+            ["double"] = {-64*4.5, 64},
+            ["solo"] = {-58*3.5, 58},
+        };
+        if sp[GAMESTATE:GetCurrentStyle():GetName()] then
+            return sp[GAMESTATE:GetCurrentStyle():GetName()]
+        end
+        return {-64*2.5, 64}
+    end
+
     for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
         Judg[#Judg+1] = Def.Quad{
             OnCommand=function(self)
-                self:zoomto(64,400):diffusealpha(0):x(-64*2.5+(64*i)):vertalign(top):y( -36 )
+                SCREENMAN:SystemMessage( tostring( GAMESTATE:GetCurrentStyle() ) ) 
+                self:zoomto(64,400):diffusealpha(0):x(stpos()[1]+(stpos()[2]*i)):vertalign(top):y( -36 )
             end;
             JudgmentMessageCommand=function(self, params)
                 if params.Player == player and params.Notes then
@@ -176,7 +223,7 @@ for player in ivalues(PlayerNumber) do
         Judg[#Judg+1] = Def.Sprite{
             Texture=THEME:GetPathG("","Judgment"),
             OnCommand=function(self)
-                self:xy(-64*2.5+(64*i), -64*1.3):zoom(0.3):pause():diffusealpha(0)
+                self:xy(stpos()[1]+(stpos()[2]*i), -64*1.3):zoom(0.3):pause():diffusealpha(0)
             end;
             JudgmentMessageCommand=function(self, params)
                 if params.Player == player and params.Notes then
@@ -197,7 +244,7 @@ for player in ivalues(PlayerNumber) do
 end
 
 local SInfo = Def.ActorFrame{
-    Condition=not (GAMESTATE:IsPlayerEnabled(PLAYER_1) and GAMESTATE:IsPlayerEnabled(PLAYER_2)),
+    Condition=not (GAMESTATE:IsPlayerEnabled(PLAYER_1) and GAMESTATE:IsPlayerEnabled(PLAYER_2)) and not InDoubleMode,
     OnCommand=function(self)
         self:xy( SCREEN_RIGHT, SCREEN_BOTTOM-40 ):diffusealpha(0)
     end;
