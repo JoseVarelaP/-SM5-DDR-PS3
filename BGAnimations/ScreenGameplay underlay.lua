@@ -1,29 +1,37 @@
 local t = Def.ActorFrame{}
 
-local function SetFrameDifficulty( pn )
-	if GAMESTATE:GetCurrentSteps(pn) then
-		local steps = GAMESTATE:GetCurrentSteps(pn):GetDifficulty();
-		local DifficultyToSet = 0;
-		if steps == "Difficulty_Beginner" then DifficultyToSet = 0; end
-		if steps == "Difficulty_Easy" then DifficultyToSet = 1; end
-		if steps == "Difficulty_Medium" then DifficultyToSet = 2; end
-		if steps == "Difficulty_Hard" then DifficultyToSet = 3; end
-		if steps == "Difficulty_Challenge" then DifficultyToSet = 4; end
-		if steps == "Difficulty_Edit" then DifficultyToSet = 5; end
-		return DifficultyToSet
-	else
-		return 0
-	end
-end
-
+-- Doubles Mode Check
 local InDoubleMode = GAMESTATE:GetCurrentStyle():GetName() == "double"
 
+-- Mod Applier
 local function iris_mod_internal(str, pn)
     local ps= GAMESTATE:GetPlayerState(pn)
     local pmods= ps:GetPlayerOptionsString('ModsLevel_Song')
     ps:SetPlayerOptions('ModsLevel_Song', pmods .. ', ' .. str)
-    --GAMESTATE:ApplyGameCommand('mod,'..str, pn)
 end
+
+local SMod = {1/3, "*2 0 dark"}
+local RCount = {
+    ["PlayerNumber_P1"] = 1,
+    ["PlayerNumber_P2"] = 1,
+}
+
+-- Small function to call Color effects for Full Combo
+local function GetFullComboEffectColor(pss)
+    local r;
+    local ColorScores = {
+        ["TapNoteScore_W1"] = color("#ffffff"),
+        ["TapNoteScore_W2"] = color("#fafc44"),
+        ["TapNoteScore_W3"] = color("#06fd32"),
+        ["TapNoteScore_W4"] = color("#3399ff"),
+    };
+    for i=1,4 do
+        if pss:FullComboOfScore('TapNoteScore_W'..i) == true then
+            r=ColorScores['TapNoteScore_W'..i]
+        end
+    end
+	return r;
+end;
 
 for player in ivalues(PlayerNumber) do
     local Judg=Def.ActorFrame{
@@ -48,9 +56,7 @@ for player in ivalues(PlayerNumber) do
             end
         end;
         EnterGameplayMessageCommand=function(self)
-            self:decelerate(1.5):zoom(1):diffusealpha(1)
-            
-            self:queuemessage("StartReceptor1")
+            self:decelerate(1.5):zoom(1):diffusealpha(1):queuemessage("StartReceptors")
         end;
     };
 
@@ -117,14 +123,27 @@ for player in ivalues(PlayerNumber) do
             self:xy(0,-100):zoom(0.2)
         end;
         -- I'm so sorry, but I cannot find another way of doing this without breaking sm.
-        StartReceptor1MessageCommand=function(self) iris_mod_internal("*2 0 dark1", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor2") end;
-        StartReceptor2Command=function(self) iris_mod_internal("*2 0 dark2", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor3") end;
-        StartReceptor3Command=function(self) iris_mod_internal("*2 0 dark3", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor4") end;
-        StartReceptor4Command=function(self) iris_mod_internal("*2 0 dark4", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor5") end;
-        StartReceptor5Command=function(self) iris_mod_internal("*2 0 dark5", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor6") end;
-        StartReceptor6Command=function(self) iris_mod_internal("*2 0 dark6", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor7") end;
-        StartReceptor7Command=function(self) iris_mod_internal("*2 0 dark7", player) self:finishtweening():sleep(1/3):queuecommand("StartReceptor8") end;
-        StartReceptor8Command=function(self) iris_mod_internal("*2 0 dark8", player) end;
+        StartReceptorsMessageCommand=function(self)
+            self:queuecommand("RecepFade")
+        end;
+        RecepFadeCommand=function(self)
+            if RCount[player] <= GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() then
+                iris_mod_internal(SMod[2]..RCount[player], player)
+                RCount[player] = RCount[player] + 1
+                self:finishtweening():sleep(SMod[1]):queuecommand("RecepFade")
+            end
+        end;
+        OffCommand=function(self)
+            RCount[player] = 1
+            local stats = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
+            if stats then
+                if stats:FullComboOfScore( 7 ) then
+                    SMod = {1/9, "*12 dark"}
+                    SOUND:PlayOnce( THEME:GetPathS("","combo_achievement") )
+                    self:queuecommand("RecepFade")
+                end
+            end
+        end;
     };
 
     PInfo[#PInfo+1] = Def.Sprite{
@@ -202,7 +221,6 @@ for player in ivalues(PlayerNumber) do
     for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
         Judg[#Judg+1] = Def.Quad{
             OnCommand=function(self)
-                SCREENMAN:SystemMessage( tostring( GAMESTATE:GetCurrentStyle() ) ) 
                 self:zoomto(64,400):diffusealpha(0):x(stpos()[1]+(stpos()[2]*i)):vertalign(top):y( -36 )
             end;
             JudgmentMessageCommand=function(self, params)
@@ -238,17 +256,118 @@ for player in ivalues(PlayerNumber) do
                     end
                 end
             end;
-        }
+        };
+
+        --[[
+            Full Combo Particle actor set
+
+            The method used to make this work goes like this:
+            First, obtain the NoteSkin currently being used by the player, and deploy fake variants
+            of the receptors. During gameplay, make them invisible since they'll only be used on Out.
+
+            Once this screen transition is about to begin, we begin the GetPlayerState check, by using
+            GAMESTATE:GetPlayerState(player):GetPlayerOptions(0):NoteSkin().
+            This will get us the exact folder name of the noteskin being used by the player, and we can use
+            said value on a NOTESKIN function called LoadActorForNoteSkin, which lets us load any kind of actor
+            regardless of the current NoteSkin. NOTESKIN:LoadActor() wouldn't work because that only works inside the
+            NoteSkin itself.
+
+            After this is done, place them, within the 64x64 pixel range of StepMania's receptors and now hide.
+            
+            During OffCommand, we begin a check to verify the FullCombo state of the player.
+            This FullCombo Animation will only play if the player has achieved an FC that is > Great ( > TapNoteScore_W3 ),
+            and if it is confirmed, then start DeployParticles, which will send the command to start the animation on each
+            column. Note the sleep command, this is used because the transition for the animation is 1>1>1>1 within around
+            6/9's of a second in DDR PS3.
+
+            The small zoom on the decoy receptors is a small touch I've added myself as most noteskins don't exactly feature
+            a glow-esc receptor that can really glow using the command. Additionally, the Smoke is using a Additive blend to
+            make sure fading isn't that intruisive and remains smooth.
+        ]]
+        if GAMESTATE:GetPlayerState(player) then
+            local nskin = GAMESTATE:GetPlayerState(player):GetPlayerOptions(0):NoteSkin()
+            Judg[#Judg+1] = NOTESKIN:LoadActorForNoteSkin( "Down", "Receptor", nskin )..{
+                OnCommand=function(self)
+                    local rotate = {90,0,180,-90}
+                    self:xy(stpos()[1]+(stpos()[2]*i), -64*0.75):rotationz( rotate[i] ):diffusealpha(0)
+                end;
+                OffCommand=function(self)
+                    local stats = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
+                    if stats then
+                        if stats:FullComboOfScore( 7 ) then
+                            self:finishtweening():sleep(SMod[1]*(i-1)):queuecommand("DeployParticles")
+                        end
+                    end
+                end;
+                DeployParticlesCommand=function(self)
+                    local gglow = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
+                    self:diffusealpha(1):glow( color("0,0,0,0") )
+                    :linear(0.2):glow( GetFullComboEffectColor(gglow) ):diffuse( GetFullComboEffectColor(gglow) )
+                    :linear(0.2):diffusealpha(0):glow( color("0,0,0,0") ):zoom(1.2)
+                end;
+            };
+            for s=1,2 do
+                Judg[#Judg+1] = Def.Sprite{
+                    Texture=THEME:GetPathG("","Gameplay/Smoke");
+                    OnCommand=function(self)
+                        self:xy(stpos()[1]+(stpos()[2]*i), -64*0.75):diffusealpha(0):zoom(0.4):blend(Blend.Add)
+                        :fadetop(1)
+                    end;
+                    OffCommand=function(self)
+                        local stats = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
+                        if stats then
+                            if stats:FullComboOfScore( 7 ) then
+                                self:finishtweening():sleep(SMod[1]*(i-1)):queuecommand("DeployParticles")
+                            end
+                        end
+                    end;
+                    DeployParticlesCommand=function(self)
+                        local gglow = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
+                        self:linear(0.2):diffusealpha(1)
+                        :linear(1):diffusealpha(0):addy(20*s)
+                    end;
+                };
+            end
+        end
+
+        -- Special ending particles based on FullCombo.
+        -- Same as the code above, but now it focuses on the quad particles that fall from the receptors.
+        for e=1,10 do
+            Judg[#Judg+1] = Def.Quad{
+                OnCommand=function(self)
+                    self:xy(stpos()[1]+(stpos()[2]*i), -64*0.75):zoom(8):spin()
+                    :effectmagnitude(10*e,20*e,15*e):diffusealpha(0)
+                end;
+                OffCommand=function(self)
+                    local stats = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
+                    if stats then
+                        if stats:FullComboOfScore( 7 ) then
+                            self:finishtweening():sleep(SMod[1]*(i-1)):queuecommand("DeployParticles")
+                        end
+                    end
+                end;
+                DeployParticlesCommand=function(self)
+                    self:diffusealpha(1)
+                    :decelerate(2):addy(50*(e/2))
+                    :x( (stpos()[1]+(stpos()[2]*i))+(math.cos(e)*math.pi)*30 )
+                    :diffusebottomedge( Color.Black ):diffusealpha(0)
+                end;
+            };
+        end
     end
     t[#t+1] = Judg
 end
 
+-- Song Information
 local SInfo = Def.ActorFrame{
+    -- Do not start the actor if we're in Doubles or Versus.
+    -- There's no space for it, and neither did the game allow this.
     Condition=not (GAMESTATE:IsPlayerEnabled(PLAYER_1) and GAMESTATE:IsPlayerEnabled(PLAYER_2)) and not InDoubleMode,
     OnCommand=function(self)
         self:xy( SCREEN_RIGHT, SCREEN_BOTTOM-40 ):diffusealpha(0)
     end;
     EnterGameplayMessageCommand=function(self)
+        -- Slowly fade in alongside everything else.
         self:sleep(2):decelerate(1.6):diffusealpha(0.5):x( SCREEN_CENTER_X+64*2.3 )
     end;
 };
@@ -260,6 +379,8 @@ SInfo[#SInfo+1] = Def.Sprite{
     end;
 };
 
+-- Song and Artist Information actors.
+-- MaxWidth is used to ensure that the text inside the Song Information ActorFrame doesn't cut off the screen.
 SInfo[#SInfo+1] = Def.BitmapText{
     Font="Common Normal",
     OnCommand=function(self)

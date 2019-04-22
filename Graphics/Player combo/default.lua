@@ -43,9 +43,6 @@ local t = Def.ActorFrame {
 		-- (cmd(skewy,-0.125;decelerate,0.325;skewy,0))(self);
 	end;
 	ToastyAchievedMessageCommand=function(self,params)
-		if params.PlayerNumber == player then
-			(cmd(thump,2;effectclock,'beat'))(self);
-		end;
 	end;
 	ComboCommand=function(self, param)
 		local iCombo = param.Misses or param.Combo;
@@ -69,10 +66,19 @@ local t = Def.ActorFrame {
 		c.Label:visible(true);
 		c.Number:settext( string.format("%i", iCombo) );
 		-- FullCombo Rewards
-		if param.Combo then
-			c.Number:diffuse(Color("White"));
+		c.Number:diffuse(Color("White"));
+		c.Label:diffuse(Color("White"));
+		if param.FullComboW1 then
+			c.Number:diffusebottomedge(color("0,1,1,1"));
+			c.Label:diffusebottomedge(color("0,1,1,1"));
+		elseif param.FullComboW2 then
+			c.Number:diffusebottomedge(color("1,1,0,1"));
+			c.Label:diffusebottomedge(color("1,1,0,1"));
+		elseif param.FullComboW3 then
+			c.Number:diffusebottomedge(color("0,1,0,1"));
+			c.Label:diffusebottomedge(color("0,1,0,1"));
+		elseif param.Combo then
 			c.Number:diffusebottomedge(color("0,1,0,1"))
-			c.Label:diffuse(Color("White"));
 			c.Label:diffusebottomedge(color("0,1,0,1"));
 		else
 			c.Number:diffuse(color("#ff0000"));
