@@ -11,26 +11,23 @@ local function iris_mod_internal(str, pn)
 end
 
 local SMod = {1/3, "*2 0 dark"}
+local CSP = false
 local RCount = {
     ["PlayerNumber_P1"] = 1,
     ["PlayerNumber_P2"] = 1,
 }
 
 -- Small function to call Color effects for Full Combo
+-- Note To Self: fix this abomination of if statements
 local function GetFullComboEffectColor(pss)
-    local r;
-    local ColorScores = {
-        ["TapNoteScore_W1"] = color("#ffffff"),
-        ["TapNoteScore_W2"] = color("#fafc44"),
-        ["TapNoteScore_W3"] = color("#06fd32"),
-        ["TapNoteScore_W4"] = color("#3399ff"),
+    local colors = {
+        [6] = color("#ffffff"),
+        [7] = color("#fafc44"),
+        [8] = color("#06fd32"),
+        [9] = color("#3399ff"),
     };
-    for i=1,4 do
-        if pss:FullComboOfScore('TapNoteScore_W'..i) == true then
-            r=ColorScores['TapNoteScore_W'..i]
-        end
-    end
-	return r;
+    for i=6,9 do if pss:FullComboOfScore(i) then return colors[i] end end
+	return Color.White
 end;
 
 for player in ivalues(PlayerNumber) do
@@ -111,6 +108,20 @@ for player in ivalues(PlayerNumber) do
     local PInfo = Def.ActorFrame{
         OnCommand=function(self)
             self:y( -80 )
+
+            local Items = {
+                { n="PlayInfo",     y=-100, zoom=0.2  },
+                { n="DiffList",     x=-80, y=-112, zoom=0.2  },
+                { n="ProfileName",  y=280, zoom=0.8  },
+                { n="Life",         x=46, y=-106 },
+                { n="LFrame",       x=44, y=-110, zoom=0.55 },
+                { n="LGlow",        x=44, y=-110, zoom=0.55  },
+                { n="Score",        x=60, y=-96 },
+            };
+
+            for v in ivalues(Items) do
+                self:GetChild( v.n ):xy( v.x and v.x or 0, v.y and v.y or 0 ):zoom( v.zoom and v.zoom or 1 )
+            end
         end;
         EnterGameplayMessageCommand=function(self)
             self:sleep(1.6):decelerate(0.8):y(0)
@@ -118,10 +129,8 @@ for player in ivalues(PlayerNumber) do
     };
 
     PInfo[#PInfo+1] = Def.Sprite{
+        Name="PlayInfo";
         Texture=THEME:GetPathG("","PlayInfo"),
-        OnCommand=function(self)
-            self:xy(0,-100):zoom(0.2)
-        end;
         -- I'm so sorry, but I cannot find another way of doing this without breaking sm.
         StartReceptorsMessageCommand=function(self)
             self:queuecommand("RecepFade")
@@ -139,7 +148,12 @@ for player in ivalues(PlayerNumber) do
             if stats then
                 if stats:FullComboOfScore( 7 ) then
                     SMod = {1/9, "*12 dark"}
-                    SOUND:PlayOnce( THEME:GetPathS("","combo_achievement") )
+                    -- Ensure the sound is only played once.
+                    if CSP == false then
+                        SOUND:PlayOnce( THEME:GetPathS("","combo_achievement") )
+                        CSP = true
+                    end
+                    MESSAGEMAN:Broadcast("FullComboAchieved", {Player=player} )
                     self:queuecommand("RecepFade")
                 end
             end
@@ -147,61 +161,52 @@ for player in ivalues(PlayerNumber) do
     };
 
     PInfo[#PInfo+1] = Def.Sprite{
+        Name="DiffList";
         Texture=THEME:GetPathG("","DiffList"),
-        OnCommand=function(self)
-            self:xy(-80,-112):zoom(0.2):pause()
-            self:setstate( SetFrameDifficulty(player) )
-        end;
+        OnCommand=function(self) self:pause():setstate( SetFrameDifficulty(player) ) end;
     };
     
     PInfo[#PInfo+1] = Def.BitmapText{
+        Name="ProfileName";
         Font="handel gothic/20px",
         Text=PROFILEMAN:GetProfile(player):GetDisplayName(),
-        OnCommand=function(self)
-            self:xy(0,280):zoom(0.8):diffusealpha(0)
-        end;
-        EnterGameplayMessageCommand=function(self)
-            self:sleep(1.6+0.6):decelerate(0.4):diffusealpha(0.5)
-        end;
+        EnterGameplayMessageCommand=function(self) self:diffusealpha(0):sleep(1.6+0.6):decelerate(0.4):diffusealpha(0.5) end;
     };
 
     -- Clone time
     PInfo[#PInfo+1] = Def.ActorProxy{
+        Name="Life";
         BeginCommand=function(self)
             self:SetTarget( SCREENMAN:GetTopScreen():GetChild("Life"..ToEnumShortString(player)) )
-            :xy(46, -106)
         end;
     };
 
     PInfo[#PInfo+1] = Def.Sprite{
+        Name="LFrame";
         Texture=THEME:GetPathG("Lifebar","Frame"),
-        OnCommand=function(self)
-            self:xy(44,-110):zoomy(0.55):zoomx(0.55):cropbottom(0.25)
-        end;
+        OnCommand=function(self) self:cropbottom(0.25) end;
     };
 
     PInfo[#PInfo+1] = Def.Sprite{
+        Name="LGlow";
         Texture=THEME:GetPathG("Lifebar","Glow"),
         OnCommand=function(self)
-            self:xy(44,-110):zoomy(0.55):zoomx(0.55):cropbottom(0.25):diffusealpha(0)
-            :glowramp():effectcolor1( 0,0,0,0 ):effectcolor2( color(1,1,1,1) ):effectperiod(0.00001)
-            :blend(Blend.Add)
+            self:cropbottom(0.25):diffusealpha(0):glowramp()
+            :effectcolor1( 0,0,0,0 ):effectcolor2( color(1,1,1,1) )
+            :effectperiod(0.00001):blend(Blend.Add)
         end;
         LifeChangedMessageCommand=function(self,params)
             if (params.Player == player) then
-                if GAMESTATE:GetPlayerState(player):GetHealthState() == "HealthState_Hot" then
-                    self:diffusealpha(1)
-                else
-                    self:diffusealpha(0)
-                end
+                local health = GAMESTATE:GetPlayerState(player):GetHealthState()
+                self:diffusealpha( health == "HealthState_Hot" and 1 or 0 )
             end
         end;
     };
 
     PInfo[#PInfo+1] = Def.ActorProxy{
+        Name="Score";
         BeginCommand=function(self)
             self:SetTarget( SCREENMAN:GetTopScreen():GetChild("Score"..ToEnumShortString(player)) )
-            :xy(60, -96)
         end;
     };
 
@@ -212,10 +217,7 @@ for player in ivalues(PlayerNumber) do
             ["double"] = {-64*4.5, 64},
             ["solo"] = {-58*3.5, 58},
         };
-        if sp[GAMESTATE:GetCurrentStyle():GetName()] then
-            return sp[GAMESTATE:GetCurrentStyle():GetName()]
-        end
-        return {-64*2.5, 64}
+        return sp[GAMESTATE:GetCurrentStyle():GetName()] and sp[GAMESTATE:GetCurrentStyle():GetName()] or {-64*2.5, 64}
     end
 
     for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
@@ -291,12 +293,9 @@ for player in ivalues(PlayerNumber) do
                     local rotate = {90,0,180,-90}
                     self:xy(stpos()[1]+(stpos()[2]*i), -64*0.75):rotationz( rotate[i] ):diffusealpha(0)
                 end;
-                OffCommand=function(self)
-                    local stats = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
-                    if stats then
-                        if stats:FullComboOfScore( 7 ) then
-                            self:finishtweening():sleep(SMod[1]*(i-1)):queuecommand("DeployParticles")
-                        end
+                FullComboAchievedMessageCommand=function(self,params)
+                    if params.Player == player then
+                        self:finishtweening():sleep(SMod[1]*(i-1)):queuecommand("DeployParticles")
                     end
                 end;
                 DeployParticlesCommand=function(self)
@@ -313,12 +312,9 @@ for player in ivalues(PlayerNumber) do
                         self:xy(stpos()[1]+(stpos()[2]*i), -64*0.75):diffusealpha(0):zoom(0.4):blend(Blend.Add)
                         :fadetop(1)
                     end;
-                    OffCommand=function(self)
-                        local stats = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
-                        if stats then
-                            if stats:FullComboOfScore( 7 ) then
-                                self:finishtweening():sleep(SMod[1]*(i-1)):queuecommand("DeployParticles")
-                            end
+                    FullComboAchievedMessageCommand=function(self,params)
+                        if params.Player == player then
+                            self:finishtweening():sleep(SMod[1]*(i-1)):queuecommand("DeployParticles")
                         end
                     end;
                     DeployParticlesCommand=function(self)
@@ -338,12 +334,9 @@ for player in ivalues(PlayerNumber) do
                     self:xy(stpos()[1]+(stpos()[2]*i), -64*0.75):zoom(8):spin()
                     :effectmagnitude(10*e,20*e,15*e):diffusealpha(0)
                 end;
-                OffCommand=function(self)
-                    local stats = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
-                    if stats then
-                        if stats:FullComboOfScore( 7 ) then
-                            self:finishtweening():sleep(SMod[1]*(i-1)):queuecommand("DeployParticles")
-                        end
+                FullComboAchievedMessageCommand=function(self,params)
+                    if params.Player == player then
+                        self:finishtweening():sleep(SMod[1]*(i-1)):queuecommand("DeployParticles")
                     end
                 end;
                 DeployParticlesCommand=function(self)
@@ -374,9 +367,7 @@ local SInfo = Def.ActorFrame{
 
 SInfo[#SInfo+1] = Def.Sprite{
     Texture=THEME:GetPathG("Gameplay","SongInfo"),
-    OnCommand=function(self)
-        self:halign(0)
-    end;
+    OnCommand=function(self) self:halign(0) end;
 };
 
 -- Song and Artist Information actors.
